@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+.vite/
+dist/
+flask_session/
+
+# Environment variables and credentials
+.env
+*.env
+GCP_gmail_api_credentials.json
+firestore-creds.json
+temp_gmail_creds.json
+temp_firestore_creds.json
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Build files
+/build
+/dist
+*.pyc
+
+# Uploads
+uploads/
+.env
