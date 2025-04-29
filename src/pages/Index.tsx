@@ -39,6 +39,8 @@ const Index = () => {
       </div>
 
       <main className="pt-16">
+        <Hero />
+        
         {/* Search Button Section */}
         <section className="py-16 px-6">
           <div className="container mx-auto max-w-5xl text-center">
@@ -57,14 +59,14 @@ const Index = () => {
               </div>
 
               <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-tight text-gray-900">
-                Find Anyone You Need with
+                Find Anything You Need with
                 <span className="text-transparent bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text">
                   {" "}Dave Search
                 </span>
               </h2>
 
               <p className="text-lg text-gray-600 mb-8">
-                Powerful search capabilities to help you find exactly who you're looking for
+                Powerful search capabilities to help you find exactly what you're looking for
               </p>
 
               <motion.div
@@ -87,8 +89,6 @@ const Index = () => {
             </motion.div>
           </div>
         </section>
-
-        <Hero />
         
         {/* <ProblemStatement />
         <HowItWorks />

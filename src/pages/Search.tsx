@@ -54,10 +54,16 @@ const SearchPage: React.FC = () => {
     setSearchResults([]);
     
     try {
-      const response = await fetch('http://localhost:5001/search', {
+      const API_URL = import.meta.env.VITE_API_URL;
+      if (!API_URL) {
+        throw new Error('API URL not configured');
+      }
+
+      const response = await fetch(`${API_URL}/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({
           query: `dave_links_only_2024 ${searchQuery}`
