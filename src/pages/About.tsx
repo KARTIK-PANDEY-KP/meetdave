@@ -47,7 +47,7 @@ const About = () => {
               </p>
               <br></br>
               <p>
-                Project Dave was built in just 36 hours during LAHacks 2025, where we competed for Linkd, Fetch AI, and DAIN challenges. 
+                Project Dave was built in just 36 hours during LAHacks 2025 with Yang Gao and Alvin Tan, where we competed for Linkd, Fetch AI, and DAIN challenges. 
                 Our hard work paid off as we earned us third in the DAIN Butterfly AI challenge and an honorable mention from Fetch AI. 
                 We even had the opportunity to discuss our project with Simplify founder Michael Yan, who was very interested and curious of 
                 what we made.
