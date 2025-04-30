@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import demoVideo from "../../public/demovid5.mp4";
+import demoVideo from "../../public/demovid1.mp4";
 import demoGif from "../../public/demovid.gif";
 
 const PlatformDemo: React.FC = () => {

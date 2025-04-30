@@ -121,20 +121,7 @@ const OnboardingComponent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F6F3] flex flex-col">
-      {/* Simplified Navbar for Onboarding */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="container mx-auto flex justify-start items-center">
-          <a href="/" className="flex items-center gap-2">
-            <img 
-              src="/logo.png" 
-              alt="project dave logo" 
-              className="h-12 md:h-14"
-            />
-            <span className="font-medium text-project-dave-dark-blue text-lg">project dave</span>
-          </a>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white flex flex-col pt-16">
 
       <div className="flex-1 container mx-auto max-w-4xl py-12 px-6">
         {/* Error Message */}
@@ -151,13 +138,13 @@ const OnboardingComponent = () => {
               Step {step} of {totalSteps}
             </span>
             <span className="text-sm font-medium text-project-dave-purple">
-              {Math.round((step / totalSteps) * 100)}% Complete
+              {step === 1 ? 0 : 100}% Complete
             </span>
           </div>
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
             <div 
               className="h-full bg-project-dave-purple rounded-full transition-all duration-300 ease-in-out" 
-              style={{ width: `${(step / totalSteps) * 100}%` }}
+              style={{ width: `${step === 1 ? 0 : 100}%` }}
             ></div>
           </div>
         </div>
@@ -167,20 +154,20 @@ const OnboardingComponent = () => {
           {/* Step 1: Welcome and Google OAuth */}
           {step === 1 && (
             <div className="space-y-6">
-              <div className="text-center mb-8">
+              <div className="text-center mb-4">
                 <div className="inline-flex items-center px-4 py-2 rounded-full bg-project-dave-purple/10 text-project-dave-purple mb-4">
                   <Sparkles className="w-4 h-4 mr-2" />
                   <span className="text-sm font-medium">Let's Get Started</span>
                 </div>
                 <h1 className="text-3xl font-bold text-project-dave-dark-blue mb-4">
-                  Welcome to <span className="text-project-dave-purple">project dave</span>
+                  <span className="text-transparent bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text">agent dave</span> coming soon!
                 </h1>
                 <p className="text-project-dave-dark-blue/80 max-w-lg mx-auto">
                   Enter your name and connect to your Google account.
                 </p>
               </div>
 
-              <div className="flex flex-col items-center justify-center space-y-4 py-8">
+              <div className="flex flex-col items-center justify-center space-y-4 py-4">
                 {/* Name input field */}
                 <div className="w-full max-w-sm">
                   <label htmlFor="fullName" className="block text-sm font-medium text-project-dave-dark-blue mb-1">

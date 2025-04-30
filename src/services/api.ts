@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'; // Using HTTP for local development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'; // Using HTTP for local development
 
 // Log the API URL for debugging
 console.log('Using API URL:', API_BASE_URL);
@@ -31,21 +31,9 @@ apiClient.interceptors.response.use(
 
 export const api = {
   // Google OAuth login
-  login: async (username: string): Promise<void> => {
-    try {
-      const response = await apiClient.get(`/login?username=${encodeURIComponent(username)}`, {
-        withCredentials: true // Ensure credentials are sent
-      });
-      if (response.data.auth_url) {
-        // Perform the redirect on the client side
-        window.location.href = response.data.auth_url;
-      } else {
-        throw new Error('No auth URL received from server');
-      }
-    } catch (error) {
-      console.error('Login request failed:', error);
-      throw error;
-    }
+  login: (username: string): void => {
+    // Direct browser redirect to the login endpoint
+    window.location.href = `${API_BASE_URL}/login?username=${encodeURIComponent(username)}`;
   },
 
   // Complete profile with resume and details
@@ -68,5 +56,47 @@ export const api = {
       withCredentials: true
     });
     return response.data;
-  }
+  },
+
+  // Search by query
+  search: async (query: string): Promise<any> => {
+    const response = await apiClient.post('/search', { query });
+    return response.data.results;
+  },
+
+  // Links-only search
+  linksOnly: async (query: string): Promise<any> => {
+    const response = await apiClient.post('/links', { query });
+    return response.data.links;
+  },
+
+  // Send an email
+  sendEmail: async (
+    username: string,
+    to: string,
+    subject: string,
+    body: string
+  ): Promise<any> => {
+    const response = await apiClient.post('/send_email', { username, to, subject, body });
+    return response.data;
+  },
+
+  // Read conversation with a contact
+  readWith: async (
+    username: string,
+    email: string
+  ): Promise<any> => {
+    const response = await apiClient.post('/read_with', { username, email });
+    return response.data.emails;
+  },
+
+  // Fetch email from Apollo API
+  getEmail: async (
+    first_name: string,
+    last_name: string,
+    linkedin_url: string
+  ): Promise<any> => {
+    const response = await apiClient.post('/get_email', { first_name, last_name, linkedin_url });
+    return response.data.email;
+  },
 }; 

@@ -33,7 +33,7 @@ const Hero = ({ showCTA = true }: { showCTA?: boolean }) => {
   };
 
   return (
-    <section className="relative min-h-screen pt-20 pb-0 overflow-hidden bg-[#F9F6F3]">
+    <section className="relative min-h-screen pt-10 pb-0 overflow-hidden bg-transparent">
       <AnimatedBackground />
 
       <div className="container-section relative z-10">
@@ -83,7 +83,7 @@ const Hero = ({ showCTA = true }: { showCTA?: boolean }) => {
             >
               <Link
                 to="/onboarding"
-                className="button-primary flex items-center group font-inter font-medium"
+                className="inline-flex items-center text-lg px-8 py-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 group"
               >
                 Join Waitlist
                 <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
@@ -110,7 +110,7 @@ const Hero = ({ showCTA = true }: { showCTA?: boolean }) => {
                     preload="metadata"
                     className="absolute top-0 left-0 w-full h-full object-cover sm:object-contain"
                   >
-                    <source src="/demovid3.mp4" type="video/mp4" />
+                    <source src="/demovid1.mp4" type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                 </div>
