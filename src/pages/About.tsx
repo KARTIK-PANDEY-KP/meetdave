@@ -69,7 +69,7 @@ const About = () => {
                   <div className="p-6">
                     <div className="flex flex-col items-center mb-4">
                       <img 
-                        src="/about/kartik.jpg" 
+                        src="/about/kartik.png" 
                         alt="Team member" 
                         className="w-24 h-24 rounded-full mb-4 object-cover"
                       />
