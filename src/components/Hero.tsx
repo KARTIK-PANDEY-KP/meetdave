@@ -83,7 +83,7 @@ const Hero = ({ showCTA = true }: { showCTA?: boolean }) => {
             >
               <Link
                 to="/onboarding"
-                className="inline-flex items-center text-lg px-8 py-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 group"
+                className="inline-flex items-center text-lg px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-blue-500 group"
               >
                 Join Waitlist
                 <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />

@@ -40,7 +40,7 @@ const Navbar = () => {
         
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center space-x-8">
-          <Link to="/onboarding" className="inline-flex items-center px-8 py-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
+          <Link to="/onboarding" className="inline-flex items-center px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-blue-500">
             Join Waitlist
           </Link>
         </div>
@@ -60,7 +60,7 @@ const Navbar = () => {
           <div className="flex flex-col space-y-4">
             <Link 
               to="/onboarding" 
-              className="inline-flex items-center justify-center px-8 py-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 w-full text-center"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-blue-500 w-full text-center"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Join Waitlist
