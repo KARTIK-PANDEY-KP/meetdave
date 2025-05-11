@@ -1,7 +1,14 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
 
 const SearchAnnouncement: React.FC = () => {
+  const [auth, setAuth] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    api.me().then(data => setAuth(data.authenticated)).catch(() => setAuth(false));
+  }, []);
+  const handleClick = () => auth ? navigate('/search') : navigate('/login');
   return (
     <section className="pt-10 pb-0 px-6 animate-reveal">
       <div className="container mx-auto max-w-5xl text-center">
@@ -17,8 +24,8 @@ const SearchAnnouncement: React.FC = () => {
             <span className="text-transparent bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text">Dave Search</span>
           </h2>
           <p className="text-lg text-gray-500 mb-6">Powerful search capabilities to help you find exactly who you're looking for</p>
-          <Link 
-            to="/search" 
+          <button 
+            onClick={handleClick} 
             className="inline-flex items-center text-lg px-8 py-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl" 
             style={{ backgroundImage: 'linear-gradient(to right, rgb(59, 130, 246), rgb(139, 92, 246), rgb(236, 72, 153))' }}
           >
@@ -27,7 +34,7 @@ const SearchAnnouncement: React.FC = () => {
               <path d="M5 12h14"></path>
               <path d="M12 5l7 7-7 7"></path>
             </svg>
-          </Link>
+          </button>
         </div>
       </div>
     </section>

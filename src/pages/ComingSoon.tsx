@@ -21,7 +21,7 @@ const ComingSoon = () => {
             </div>
             
             <h1 className="text-3xl md:text-4xl font-bold text-project-dave-dark-blue mb-6">
-              Coming Soon
+              Coming Soon!
             </h1>
             
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">

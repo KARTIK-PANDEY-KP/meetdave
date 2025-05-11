@@ -30,10 +30,20 @@ apiClient.interceptors.response.use(
 );
 
 export const api = {
-  // Google OAuth login
-  login: (username: string): void => {
-    // Direct browser redirect to the login endpoint
-    window.location.href = `${API_BASE_URL}/login?username=${encodeURIComponent(username)}`;
+  // Login with Google (existing users)
+  login: (): void => {
+    window.location.href = `${API_BASE_URL}/login?flow=login`;
+  },
+
+  // Fetch current user session info
+  me: async (): Promise<{ authenticated: boolean; user_id?: string; profile_completed: boolean; joined_waitlist: boolean }> => {
+    const response = await apiClient.get('/me', { withCredentials: true });
+    return response.data;
+  },
+
+  // Logout user and clear session
+  logout: async (): Promise<void> => {
+    await apiClient.post('/logout', {}, { withCredentials: true });
   },
 
   // Complete profile with resume and details
@@ -98,5 +108,10 @@ export const api = {
   ): Promise<any> => {
     const response = await apiClient.post('/get_email', { first_name, last_name, linkedin_url });
     return response.data.email;
+  },
+
+  // Sign up with Google (new users)
+  signUp: (username: string): void => {
+    window.location.href = `${API_BASE_URL}/login?flow=signup&username=${encodeURIComponent(username)}`;
   },
 }; 

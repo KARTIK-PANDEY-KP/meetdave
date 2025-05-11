@@ -52,7 +52,7 @@ const OnboardingComponent = () => {
     setError(null);
 
     try {
-      await api.login(formData.fullName);
+      await api.login(formData.fullName, 'onboarding');
       // The login function will handle the redirect
     } catch (error) {
       console.error('Google connection error:', error);
@@ -60,6 +60,11 @@ const OnboardingComponent = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Quick login handler for returning users
+  const handleQuickLogin = () => {
+    api.quickLogin('onboarding');
   };
 
   // 1. First useEffect: Set username from URL if present and force step 2
@@ -209,6 +214,10 @@ const OnboardingComponent = () => {
                     />
                   </svg>
                   <span className="font-medium">Connect with Google</span>
+                </button>
+                
+                <button onClick={handleQuickLogin} disabled={loading} className="flex items-center justify-center gap-3 w-full max-w-sm bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg py-3 px-4 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none">
+                  Login with Google
                 </button>
                 
               </div>

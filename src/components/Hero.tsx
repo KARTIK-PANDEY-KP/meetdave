@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import AnimatedBackground from "./AnimatedBackground";
 import { ArrowRight, Zap } from "lucide-react";
 import { motion } from "framer-motion";
@@ -6,10 +6,23 @@ import PlatformDemo from "./hero/PlatformDemo";
 import StatsSection from "./hero/StatsSection";
 import CyclingText from "./CyclingText"; // Import the CyclingText component
 import { Link } from "react-router-dom";
+import { api } from '../services/api';
 
 const Hero = ({ showCTA = true }: { showCTA?: boolean }) => {
   const statsRef = useRef<HTMLDivElement>(null);
   const demoRef = useRef<HTMLDivElement>(null);
+  const [auth, setAuth] = useState(false);
+  const [joined, setJoined] = useState(false);
+
+  useEffect(() => {
+    api.me().then(data => {
+      setAuth(data.authenticated);
+      setJoined(data.joined_waitlist);
+    }).catch(() => {
+      setAuth(false);
+      setJoined(false);
+    });
+  }, []);
 
   // Animation variants
   const containerVariants = {
@@ -82,7 +95,7 @@ const Hero = ({ showCTA = true }: { showCTA?: boolean }) => {
               className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16"
             >
               <Link
-                to="/onboarding"
+                to={!auth?'/onboarding': joined?'/coming-soon':'/resume'}
                 className="inline-flex items-center text-lg px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-blue-500 group"
               >
                 Join Waitlist

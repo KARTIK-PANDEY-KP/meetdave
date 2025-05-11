@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Navbar from '@/components/Navbar';
+import LoginNavBar from '@/components/LoginNavBar';
 import { Link } from 'react-router-dom';
 
 const SearchPage: React.FC = () => {
@@ -125,7 +125,7 @@ const SearchPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-project-dave-dark-blue overflow-hidden flex flex-col">
       <div className="fixed w-full z-50">
-        <Navbar />
+        <LoginNavBar />
       </div>
       
       {/* Main Content with Search Bar */}

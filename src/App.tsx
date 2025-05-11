@@ -14,7 +14,10 @@ import WaitlistSuccess from "./pages/WaitlistSuccess";
 import ComingSoon from "./pages/ComingSoon";
 import Why from "./pages/Why";
 import SearchPage from "./pages/Search";
+import Resume from "./pages/Resume";
+import Login from "./pages/Login";
 // import Waitlist from "./pages/Waitlist"; // Waitlist page was removed
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
 
@@ -30,8 +33,10 @@ const App = () => (
             <Route path="/why" element={<Why />} />
             <Route path="/onboarding" element={<OnboardingScreen />} />
             {/* <Route path="/dashboard" element={<MentorDashboard />} /> */}
-            <Route path="/coming-soon" element={<ComingSoon />} />
-            <Route path="/search" element={<SearchPage />} />
+            <Route path="/coming-soon" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+            <Route path="/resume" element={<ProtectedRoute><Resume /></ProtectedRoute>} />
+            <Route path="/login" element={<Login />} />
             <Route path="/about" element={<About />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

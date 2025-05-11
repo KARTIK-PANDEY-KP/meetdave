@@ -2,16 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Menu, X } from 'lucide-react';
+import { api } from '../services/api';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [auth, setAuth] = useState(false);
+  const [joined, setJoined] = useState(false);
   const location = useLocation();
   
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
+    
+    api.me()
+      .then(data => {
+        setAuth(data.authenticated);
+        setJoined(data.joined_waitlist);
+      })
+      .catch(() => {
+        setAuth(false);
+        setJoined(false);
+      });
     
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -40,7 +53,7 @@ const Navbar = () => {
         
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center space-x-8">
-          <Link to="/onboarding" className="inline-flex items-center px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-blue-500">
+          <Link to={!auth ? '/onboarding' : joined ? '/coming-soon' : '/resume'} className="inline-flex items-center px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-blue-500">
             Join Waitlist
           </Link>
         </div>
@@ -59,7 +72,7 @@ const Navbar = () => {
         <div className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg py-4 px-6">
           <div className="flex flex-col space-y-4">
             <Link 
-              to="/onboarding" 
+              to={!auth ? '/onboarding' : joined ? '/coming-soon' : '/resume'} 
               className="inline-flex items-center justify-center px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 text-white shadow-lg hover:shadow-xl bg-blue-500 w-full text-center"
               onClick={() => setIsMobileMenuOpen(false)}
             >
