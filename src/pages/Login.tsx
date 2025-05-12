@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { api } from '../services/api';
 
 const Login = () => {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const err = params.get('error');
+    if (err === 'email_already_registered') {
+      setUrlError('This email is already registered. Please log in.');
+    }
+  }, [location.search]);
 
   const handleSignUp = () => {
     if (!fullName) {
@@ -52,6 +63,11 @@ const Login = () => {
             </div>
 
             <div className="flex flex-col items-center justify-center space-y-4 py-4">
+              {urlError && (
+                <div className="mb-2 text-red-600 text-sm">
+                  {urlError}
+                </div>
+              )}
               <div className="w-full max-w-sm">
                 <label htmlFor="fullName" className="block text-sm font-medium text-project-dave-dark-blue mb-1">
                   Full Name <span className="text-red-500">*</span>
@@ -80,7 +96,23 @@ const Login = () => {
                 </svg>
                 Sign up with Google
               </button>
-              <button onClick={handleLogin} disabled={loading} className="flex items-center justify-center gap-3 w-full max-w-sm bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg py-3 px-4 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none">
+              <div className="flex items-center my-2 w-full max-w-sm">
+                <hr className="flex-grow border-t border-gray-300" />
+                <span className="px-2 text-gray-500">or</span>
+                <hr className="flex-grow border-t border-gray-300" />
+              </div>
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="flex items-center justify-center gap-3 w-full max-w-sm bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg py-3 px-4 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <svg viewBox="0 0 24 24" width="24" height="24" className="mr-2">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 13.61a7.05 7.05 0 010-4.22V6.55H2.18a11.98 11.98 0 000 10.9l3.66-2.84z" />
+                  <path fill="#EA4335" d="M12 4.77c1.62 0 3.08.56 4.23 1.65l3.17-3.17C17.46 1.64 14.97.5 12 .5 7.7.5 3.99 3.47 2.18 6.55l3.66 2.84C6.71 7.7 9.14 4.77 12 4.77z" />
+                  <path fill="none" d="M0 0h24v24H0z" />
+                </svg>
                 Login with Google
               </button>
             </div>

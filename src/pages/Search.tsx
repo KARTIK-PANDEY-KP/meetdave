@@ -3,6 +3,7 @@ import { Search as SearchIcon, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import LoginNavBar from '@/components/LoginNavBar';
 import { Link } from 'react-router-dom';
+import { api } from '@/services/api';
 
 const SearchPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -10,7 +11,8 @@ const SearchPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [thinkingDots, setThinkingDots] = useState('');
-  
+  const [searchLimitError, setSearchLimitError] = useState<string | null>(null);
+
   // Animate thinking dots when loading
   useEffect(() => {
     if (!isLoading) return;
@@ -47,79 +49,26 @@ const SearchPage: React.FC = () => {
   }, []);
   
   // Handle search submission
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    
-    // Set loading state
+
+    setSearchLimitError(null);
     setIsLoading(true);
     setSearchResults([]);
-    
-    // Simulate API call
-    setTimeout(() => {
-      // TODO: Replace with actual API call
-      console.log('Searching for:', searchQuery);
-      // Mock search results with profile info
-      setSearchResults([
-        { 
-          id: 1, 
-          name: 'Alex Johnson',
-          profileImage: 'https://ui-avatars.com/api/?name=Alex+Johnson&background=random',
-          linkUrl: '/profile/1',
-          linkText: 'View Profile'
-        },
-        { 
-          id: 2, 
-          name: 'Sarah Williams',
-          profileImage: 'https://ui-avatars.com/api/?name=Sarah+Williams&background=random',
-          linkUrl: '/profile/2',
-          linkText: 'View Profile'
-        },
-        { 
-          id: 3, 
-          name: 'Michael Chen',
-          profileImage: 'https://ui-avatars.com/api/?name=Michael+Chen&background=random',
-          linkUrl: '/profile/3',
-          linkText: 'View Calendar'
-        },
-        { 
-          id: 4, 
-          name: 'Emma Rodriguez',
-          profileImage: 'https://ui-avatars.com/api/?name=Emma+Rodriguez&background=random',
-          linkUrl: '/profile/4',
-          linkText: 'Schedule Meeting'
-        },
-        { 
-          id: 5, 
-          name: 'David Kumar',
-          profileImage: 'https://ui-avatars.com/api/?name=David+Kumar&background=random',
-          linkUrl: '/profile/5',
-          linkText: 'View Profile'
-        },
-        { 
-          id: 6, 
-          name: 'Olivia Smith',
-          profileImage: 'https://ui-avatars.com/api/?name=Olivia+Smith&background=random',
-          linkUrl: '/profile/6',
-          linkText: 'Connect'
-        },
-        { 
-          id: 7, 
-          name: 'James Wilson',
-          profileImage: 'https://ui-avatars.com/api/?name=James+Wilson&background=random',
-          linkUrl: '/profile/7',
-          linkText: 'View Profile'
-        },
-        { 
-          id: 8, 
-          name: 'Sophia Lee',
-          profileImage: 'https://ui-avatars.com/api/?name=Sophia+Lee&background=random',
-          linkUrl: '/profile/8',
-          linkText: 'Message'
-        }
-      ]);
+
+    try {
+      const results = await api.search(searchQuery);
+      setSearchResults(results);
+    } catch (error: any) {
+      if (error.response && error.response.status === 403) {
+        setSearchLimitError("You've used all 5 free searches. Upgrade to continue searching!");
+      } else {
+        console.error('Search failed', error);
+      }
+    } finally {
       setIsLoading(false);
-    }, 3000); // 3 second delay to simulate API call
+    }
   };
   
   return (
@@ -186,6 +135,12 @@ const SearchPage: React.FC = () => {
               </div>
             </form>
 
+            {/* Search Limit Error */}
+            {searchLimitError && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {searchLimitError}
+              </div>
+            )}
             {/* Loading State */}
             {isLoading && (
               <div className="text-center mt-8">
@@ -202,11 +157,11 @@ const SearchPage: React.FC = () => {
           
             {/* Search Results - Card Grid */}
             {!isLoading && searchResults.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+              <div className="max-w-screen-2xl w-full mx-auto px-8 bg-white rounded-lg shadow-md p-6 mt-8 mb-20">
                 <h2 className="text-xl font-semibold text-project-dave-dark-blue mb-6">
                   Results ({searchResults.length})
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                   {searchResults.map((result) => (
                     <div key={result.id} className="bg-white border-2 border-gray-100 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                       <div className="flex flex-col items-center p-4">

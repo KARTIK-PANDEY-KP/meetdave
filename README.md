@@ -1,8 +1,11 @@
-# Project Dave
-
-A modern networking platform that helps you connect with the right people.
+# MeetDave
 
 ## Setup
+
+### Prerequisites
+- Python 3.8+
+- Node.js 14+
+- Google Cloud Project with API credentials
 
 ### Frontend
 ```bash

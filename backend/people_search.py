@@ -1,56 +1,16 @@
 import os
-from dotenv import load_dotenv
-from datetime import datetime
-from uuid import uuid4
-from uagents import Agent, Protocol, Context, Model
-from uagents.setup import fund_agent_if_low
-from uagents_core.contrib.protocols.chat import (
-    ChatMessage,
-    ChatAcknowledgement,
-    TextContent,
-    chat_protocol_spec,
-)
-import requests
 import json
-import asyncio
+import anthropic
+from googleapiclient.discovery import build
+from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+GOOGLE_CSE_ID = os.environ.get("GOOGLE_CSE_ID")
 
-# Access environment variables
-ASI_KEY = os.getenv('ASI_KEY')
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
-AGENTVERSE_API_KEY = os.getenv('AGENTVERSE_API_KEY')
-
-# ASI-1 Configuration
-URL = "https://api.asi1.ai/v1/chat/completions"
-MODEL = "asi1-mini"
-
-# Google Custom Search API Configuration
-GOOGLE_SEARCH_URL = "https://www.googleapis.com/customsearch/v1"
-
-# Headers for ASI-1 API
-HEADERS = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Authorization': f'bearer {ASI_KEY}'
-}
-
-# Initialize agent with HTTP endpoints
-agent = Agent(
-    name="dorks_agent",
-    seed="your-seed-here",  # Replace with your seed
-    port=5000,
-    endpoint=["http://localhost:5000/submit"],
-)
-
-# Initialize the chat protocol
-chat_proto = Protocol(chat_protocol_spec)
-
-# Add this constant at the top with other configurations
-SPECIAL_TAG = "dave_links_only_2024"  # This is our special tag/fingerprint
-
+# Template for prompting Claude to generate Google dorks
 DORKS_TEMPLATE = """
 # Google Dork Syntax Quick Reference
 # ===============================
@@ -369,240 +329,57 @@ term1 -term2              # Excluded term
 term1 ~term2              # Similar term
 term1 *term2              # Wildcard term
 
-
 now following is the user query convert that to dork and give me only dorks in JSON nothing else:
 
 User Query: {query}
 
 Return ONLY the JSON with dorks, nothing else.
-
 """
 
-# Define request and response models for REST endpoints
-class SearchRequest(Model):
-    query: str
-
-class SearchResponse(Model):
-    results: str
-
-class LinksResponse(Model):
-    links: list
-
-async def get_google_search_results(dork: str, num_results: int = 3) -> list:
-    try:
-        params = {
-            'key': GOOGLE_API_KEY,
-            'cx': GOOGLE_CSE_ID,
-            'q': dork,
-            'num': num_results
-        }
-        
-        response = requests.get(GOOGLE_SEARCH_URL, params=params)
-        response.raise_for_status()
-        
-        data = response.json()
-        search_results = []
-        
-        if 'items' in data:
-            for item in data['items']:
-                search_results.append({
-                    'title': item.get('title', ''),
-                    'link': item.get('link', ''),
-                    'snippet': item.get('snippet', '')
-                })
-            
-            # If we didn't get enough results, try a second page
-            if len(search_results) < num_results and 'queries' in data and 'nextPage' in data['queries']:
-                next_page = data['queries']['nextPage'][0]['startIndex']
-                params['start'] = next_page
-                response = requests.get(GOOGLE_SEARCH_URL, params=params)
-                response.raise_for_status()
-                data = response.json()
-                
-                if 'items' in data:
-                    for item in data['items']:
-                        if len(search_results) < num_results:
-                            search_results.append({
-                                'title': item.get('title', ''),
-                                'link': item.get('link', ''),
-                                'snippet': item.get('snippet', '')
-                            })
-        
-        return search_results[:num_results]  # Ensure we return exactly num_results
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return []
-
-def format_results(all_results, links_only: bool = False):
-    formatted_output = []
-    for dork_name, data in all_results.items():
-        if not links_only:
-            formatted_output.append(f"\nDork: {data['dork']}\n")
-        
-        if not data['results']:
-            if not links_only:
-                formatted_output.append("No results found for this dork.\n")
-            continue
-            
-        for idx, result in enumerate(data['results'], 1):
-            if links_only:
-                formatted_output.append(result['link'])
-            else:
-                formatted_output.append(f"Result {idx}:")
-                formatted_output.append(f"Title: {result['title']}")
-                formatted_output.append(f"Link: {result['link']}")
-                formatted_output.append(f"Description: {result['snippet']}\n")
-    return "\n".join(formatted_output)
-
-# Add extract_links function to get just links
-def extract_links(all_results):
+def search_with_google_api(query: str) -> dict:
+    """Search using Google's Custom Search API."""
+    service = build("customsearch", "v1", developerKey=GOOGLE_API_KEY)
+    response = service.cse().list(q=query, cx=GOOGLE_CSE_ID, num=5).execute()
+    items = response.get("items", []) or []
+    data = []
     links = []
-    for data in all_results.values():
-        for result in data['results']:
-            links.append(result['link'])
-    return links
+    for item in items:
+        data.append({
+            "title": item.get("title", ""),
+            "link": item.get("link", ""),
+            "snippet": item.get("snippet", "")
+        })
+        links.append(item.get("link", ""))
+    return {"data": data, "links": links}
 
-async def process_query(query, links_only=False):
-    """Process a search query and return results"""
-    try:
-        # Prepare prompt
-        prompt = DORKS_TEMPLATE.format(query=query)
-        
-        # Prepare ASI-1 request
-        payload = {
-            "model": MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": 0,
-            "stream": False,
-            "max_tokens": 0
+
+def generate_google_dorks(natural_query: str) -> dict:
+    """Generate Google dorks for a natural language query, then fetch CSE results."""
+    if not ANTHROPIC_API_KEY or not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
+        raise RuntimeError("Required environment variables are missing: ANTHROPIC_API_KEY, GOOGLE_API_KEY, GOOGLE_CSE_ID")
+
+    # 1. Ask Claude to generate JSON array of dorks
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    prompt = DORKS_TEMPLATE.replace("{query}", natural_query)
+    message = client.messages.create(
+        model="claude-3-opus-20240229",
+        max_tokens=4096,
+        temperature=0,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    # Extract JSON
+    response_text = message.content[0].text
+    if "```json" in response_text:
+        json_str = response_text.split("```json")[1].split("```")[0].strip()
+    else:
+        json_str = response_text.strip()
+    dorks = json.loads(json_str)
+
+    # 2. For each dork, fetch search results
+    final_results = {}
+    for idx, dork in enumerate(dorks, start=1):
+        final_results[f"query_{idx}"] = {
+            "query": dork,
+            "results": search_with_google_api(dork)
         }
-        
-        # Make request to ASI-1
-        response = requests.post(URL, headers=HEADERS, json=payload)
-        
-        if response.status_code == 200:
-            # Get content and clean JSON
-            content = response.json()["choices"][0]["message"]["content"]
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-            
-            # Parse the dorks from JSON
-            dorks_data = json.loads(content)
-            
-            # Get search results for each dork
-            all_results = {}
-            for dork_name, dork_queries in dorks_data.items():
-                if isinstance(dork_queries, list):
-                    for idx, dork_query in enumerate(dork_queries, 1):
-                        search_results = await get_google_search_results(dork_query)
-                        all_results[f"{dork_name}_{idx}"] = {
-                            'dork': dork_query,
-                            'results': search_results
-                        }
-                else:
-                    search_results = await get_google_search_results(dork_queries)
-                    all_results[dork_name] = {
-                        'dork': dork_queries,
-                        'results': search_results
-                    }
-            
-            if links_only:
-                return extract_links(all_results)
-            else:
-                return format_results(all_results, links_only=False)
-    except Exception as e:
-        return f"Error processing query: {str(e)}"
-
-@agent.on_event("startup")
-async def startup(ctx: Context):
-    ctx.logger.info(f"Starting up Dorks Generator agent with address: {ctx.agent.address}")
-    # Skip funding for now as it's causing errors
-    # await fund_agent_if_low(ctx.agent)
-
-if hasattr(agent, "on_rest_post"):
-    @agent.on_rest_post("/search", SearchRequest, SearchResponse)
-    async def handle_search(ctx: Context, request: SearchRequest) -> SearchResponse:
-        ctx.logger.info(f"Received REST search request: {request.query}")
-        
-        # Check if the special tag is present
-        links_only = SPECIAL_TAG in request.query
-        # Remove the tag from the query if present
-        query = request.query.replace(SPECIAL_TAG, "").strip()
-        
-        # Process the query
-        if links_only:
-            links = await process_query(query, links_only=True)
-            result = {"links": links}
-            return SearchResponse(results=json.dumps(result))
-        else:
-            result = await process_query(query)
-            return SearchResponse(results=result)
-
-if hasattr(agent, "on_rest_post"):
-    @agent.on_rest_post("/links", SearchRequest, LinksResponse)
-    async def handle_links(ctx: Context, request: SearchRequest) -> LinksResponse:
-        ctx.logger.info(f"Received REST links request: {request.query}")
-        
-        # Process the query for links only
-        links = await process_query(request.query, links_only=True)
-        return LinksResponse(links=links)
-
-@chat_proto.on_message(ChatMessage)
-async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
-    for item in msg.content:
-        if isinstance(item, TextContent):
-            ctx.logger.info(f"Received query from {sender}: {item.text}")
-            
-            try:
-                # Check if the special tag is present
-                links_only = SPECIAL_TAG in item.text
-                # Remove the tag from the query if present
-                query = item.text.replace(SPECIAL_TAG, "").strip()
-                
-                if links_only:
-                    links = await process_query(query, links_only=True)
-                    formatted_output = "\n".join(links)
-                else:
-                    formatted_output = await process_query(query)
-                
-                # Send acknowledgment
-                ack = ChatAcknowledgement(
-                    timestamp=datetime.utcnow(),
-                    acknowledged_msg_id=msg.msg_id
-                )
-                await ctx.send(sender, ack)
-                
-                # Send response
-                response_msg = ChatMessage(
-                    timestamp=datetime.utcnow(),
-                    msg_id=uuid4(),
-                    content=[TextContent(type="text", text=formatted_output)]
-                )
-                await ctx.send(sender, response_msg)
-                    
-            except Exception as e:
-                error_msg = ChatMessage(
-                    timestamp=datetime.utcnow(),
-                    msg_id=uuid4(),
-                    content=[TextContent(type="text", text=f"Error: {str(e)}")]
-                )
-                await ctx.send(sender, error_msg)
-
-@chat_proto.on_message(ChatAcknowledgement)
-async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
-    ctx.logger.info(f"Received acknowledgement from {sender} for message: {msg.acknowledged_msg_id}")
-
-# Include the protocol
-agent.include(chat_proto, publish_manifest=False)
-
-if __name__ == "__main__":
-    agent.run() 
+    return final_results

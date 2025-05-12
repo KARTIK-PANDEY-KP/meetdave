@@ -1,52 +1,61 @@
-# app.py
 import os
-from flask import Flask, redirect, request, session, url_for, render_template_string, jsonify
+import fitz  # PyMuPDF
+from dotenv import load_dotenv
+from flask import Flask, request, jsonify, redirect, url_for, session, render_template_string, Response
+from flask_cors import CORS
+import requests
+import json
+import asyncio
+import base64
+import urllib.parse
+from email.mime.text import MIMEText
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.cloud import firestore
 from google.oauth2.credentials import Credentials
-from dotenv import load_dotenv
-from email.mime.text import MIMEText
-import base64
-from flask import jsonify
-from google_search import perform_google_search
-import logging
-import requests
-import json
-import urllib.parse
+from google.auth.transport.requests import Request
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
-# Get paths from environment variables
+# Access environment variables
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
 GMAIL_CREDENTIALS_PATH = os.getenv('GMAIL_CREDENTIALS_PATH', './GCP_gmail_api_credentials.json')
 FIRESTORE_CREDENTIALS_PATH = os.getenv('FIRESTORE_CREDENTIALS_PATH', './firestore-creds.json')
 
-# Get API key from environment variable
-LINKD_API_KEY = os.getenv('LINKD_API_KEY')
+# Allow insecure transport for OAuth (development only)
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-
-
+# OAuth scopes for Gmail API
 SCOPES = [
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/gmail.readonly'
 ]
 
+from people_search import generate_google_dorks
+
 app = Flask(__name__)
+CORS(
+    app,
+    supports_credentials=True,
+    origins=["http://localhost:8000", "http://localhost:3000"],  # Frontend URLs
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
 app.secret_key = "FLASK_SESSION_KEY"
 
+# Enable cross-domain cookies
+app.config.update(
+    SESSION_COOKIE_SAMESITE=None,
+    SESSION_COOKIE_SECURE=False  # Set to True if using HTTPS
+)
+
+# Helper functions for Google API and Firestore
 def get_firestore_client():
     # Set the credentials path for Firestore
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = FIRESTORE_CREDENTIALS_PATH
     return firestore.Client()
-
-from google.auth.transport.requests import Request
 
 def get_user_credentials(user_id):
     db = get_firestore_client()
@@ -75,104 +84,182 @@ def get_user_credentials(user_id):
 
     return creds
 
+# Get environment variables or use defaults
+PORT = int(os.getenv("PORT", 8080))
+HOST = os.getenv("HOST", "0.0.0.0")
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
+@app.route('/search', methods=['POST'])
+def search():
+    # Ensure user is authenticated
+    # user_id = session.get('user_id')
+    # if not user_id:
+    #     return jsonify({"error": "Not authenticated"}), 401
+    # Check and increment user search count
+    # db = get_firestore_client()
+    # user_ref = db.collection('users').document(user_id)
+    # user_doc = user_ref.get()
+    # current_searches = user_doc.to_dict().get('searches', 0)
+    # if current_searches >= 5:
+    #     return jsonify({"error": "Search limit reached"}), 403
+    # user_ref.update({"searches": firestore.Increment(1)})
+    try:
+        data = request.get_json()
+        if not data or 'query' not in data:
+            return jsonify({"error": "Missing 'query' in request"}), 400
+        query = data['query']
+        # Call local generate_google_dorks
+        results = generate_google_dorks(query)
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/')
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy"})
+
+@app.route('/', methods=['GET'])
 def home():
-    return '''
-        <form action="/login" method="get">
-            <label for="username">Choose a username:</label><br>
-            <input type="text" id="username" name="username" required><br><br>
-            <input type="submit" value="Login with Google">
-        </form>
-    '''
+    return jsonify({
+        "service": "Dorks Search API",
+        "version": "1.0.0",
+        "endpoints": [
+            {"path": "/search", "method": "POST", "description": "Search with Google dorks"},
+            {"path": "/health", "method": "GET", "description": "Health check endpoint"}
+        ]
+    })
 
-
+# Email-related endpoints
 @app.route('/login')
 def login():
-    username = request.args.get('username')
-    if not username:
-        return "❌ Username required", 400
+    # flow='login' or 'signup'
+    flow_type = request.args.get('flow', 'login')
+    session['flow'] = flow_type
 
-    session['custom_username'] = username
+    if flow_type == 'signup':
+        username = request.args.get('username')
+        if not username:
+            return '❌ Username required for signup', 400
+        session['custom_username'] = username
 
-    flow = Flow.from_client_secrets_file(
+    flow_obj = Flow.from_client_secrets_file(
         GMAIL_CREDENTIALS_PATH,
         scopes=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True)
     )
-    auth_url, _ = flow.authorization_url(prompt='consent', include_granted_scopes='true')
+    auth_url, _ = flow_obj.authorization_url(prompt='auto', include_granted_scopes='true')
     return redirect(auth_url)
-
 
 @app.route('/oauth2callback')
 def oauth2callback():
-    flow = Flow.from_client_secrets_file(
+    # Exchange token
+    flow_obj = Flow.from_client_secrets_file(
         GMAIL_CREDENTIALS_PATH,
         scopes=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True)
     )
-    flow.fetch_token(authorization_response=request.url)
+    flow_obj.fetch_token(authorization_response=request.url)
 
-    credentials = flow.credentials
-    access_token = credentials.token
-    refresh_token = credentials.refresh_token
-    token_expiry = credentials.expiry.isoformat()
+    creds = flow_obj.credentials
+    access_token = creds.token
+    refresh_token = creds.refresh_token
+    token_expiry = creds.expiry.isoformat()
 
-    service = build('gmail', 'v1', credentials=credentials)
-    profile = service.users().getProfile(userId='me').execute()
-    email = profile['emailAddress']
+    service = build('gmail', 'v1', credentials=creds)
+    email = service.users().getProfile(userId='me').execute()['emailAddress']
 
-    username = session.get('custom_username')
-    if not username:
-        return "❌ Missing username from session", 400
-
-    user_id = username
-
+    flow_type = session.get('flow', 'login')
     db = get_firestore_client()
-    db.collection("users").document(user_id).set({
-        "email": email,
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_expiry": token_expiry
-    })
+    users_ref = db.collection('users')
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:8000')
 
-    # Return a form with two text fields
-    return render_template_string('''
-        <h2>✅ Auth successful for {{ username }}!</h2>
-        <p>Please provide your resume and additional details:</p>
-        
-        <form action="/complete_profile" method="post">
-            <input type="hidden" name="username" value="{{ username }}">
-            
-            <div>
-                <label for="resume">Resume Text:</label><br>
-                <textarea id="resume" name="resume" rows="15" required style="width: 100%;"></textarea>
-            </div>
-            
-            <div>
-                <label for="additional_details">Additional Details:</label><br>
-                <textarea id="additional_details" name="additional_details" rows="10" style="width: 100%;"></textarea>
-            </div>
-            
-            <button type="submit">Save</button>
-        </form>
-    ''', username=username)
+    if flow_type == 'login':
+        # Existing user login
+        docs = list(users_ref.where('email', '==', email).stream())
+        if docs:
+            doc = docs[0]
+            user_id = doc.id
+            # Update tokens
+            doc.reference.update({
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'token_expiry': token_expiry
+            })
+            session['user_id'] = user_id
+            session['user_email'] = email
+            session.permanent = True
+            return redirect(f"{frontend_url}/search")
+        else:
+            # Not registered: go to signup
+            session['temp_email'] = email
+            return redirect(f"{frontend_url}/login?flow=signup")
+    else:
+        # Signup flow
+        # Enforce unique email
+        normalized_email = email.lower().strip()
+        dup = list(users_ref.where('email', '==', normalized_email).stream())
+        if dup:
+            session.pop('temp_email', None)
+            session.pop('flow', None)
+            return redirect(f"{frontend_url}/login?error=email_already_registered")
+        username = session.get('custom_username')
+        if not username:
+            return '❌ Missing username for signup', 400
+        user_id = username
+        session['user_id'] = user_id
+        session['user_email'] = email
+        session.permanent = True
+        # Create new user
+        users_ref.document(user_id).set({
+            'email': normalized_email,
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'token_expiry': token_expiry,
+            'searches': 0,
+            'joined_waitlist': False,
+            'profile_completed': False
+        })
+        return redirect(f"{frontend_url}/resume")
 
+def extract_text_from_upload(file):
+    try:
+        # Try to open as PDF first
+        if file.filename.lower().endswith('.pdf'):
+            doc = fitz.open(stream=file.read(), filetype="pdf")
+            text = "\n".join(page.get_text() for page in doc)
+            doc.close()
+            return text
+        # For other file types, you might need additional libraries
+        # This is a placeholder for DOC/DOCX handling
+        else:
+            return "File type not supported for text extraction. Only PDF is currently supported."
+    except Exception as e:
+        return f"Error extracting text: {str(e)}"
 
 @app.route('/complete_profile', methods=['POST'])
 def complete_profile():
-    username = request.form.get('username')
-    if not username:
-        return "❌ Missing username", 400
+    # Get user_id from session instead of form
+    user_id = session.get('user_id')
+    if not user_id:
+        return "❌ Not authenticated. Please log in first.", 401
 
-    # Get form data
-    resume_text = request.form.get('resume', '')
+    # Get form data and file
     additional_details = request.form.get('additional_details', '')
-
+    
+    # Check if file was uploaded
+    if 'resume_file' not in request.files:
+        return "❌ No resume file uploaded", 400
+        
+    file = request.files['resume_file']
+    if file.filename == '':
+        return "❌ No resume file selected", 400
+    
+    # Extract text from the uploaded file
+    resume_text = extract_text_from_upload(file)
+    
     # Store in Firestore
     db = get_firestore_client()
-    user_ref = db.collection("users").document(username)
+    user_ref = db.collection("users").document(user_id)
     
     # First check if document exists
     doc = user_ref.get()
@@ -181,14 +268,16 @@ def complete_profile():
         user_ref.set({
             "resume_text": resume_text,
             "additional_details": additional_details,
-            "profile_completed": True
+            "profile_completed": True,
+            "joined_waitlist": True
         })
     else:
         # Update existing document
         user_ref.update({
             "resume_text": resume_text,
             "additional_details": additional_details,
-            "profile_completed": True
+            "profile_completed": True,
+            "joined_waitlist": True
         })
 
     return "✅ Saved"
@@ -279,86 +368,6 @@ def read_with():
 
     return {'emails': email_data}
 
-@app.route('/google_search', methods=['POST'])
-async def google_search_endpoint():
-    try:
-        data = request.json
-        if not data:
-            logger.error("No JSON data received")
-            return jsonify({"error": "No JSON data received"}), 400
-            
-        search_query = data.get('query')
-        if not search_query:
-            logger.error("Missing search query")
-            return jsonify({"error": "Missing search query"}), 400
-        
-        logger.info(f"Performing search with query: {search_query}")
-        results = await perform_google_search(search_query)
-        logger.info(f"Search completed. Found {len(results)} results")
-        
-        return jsonify({
-            "status": "success",
-            "results": results
-        })
-    except Exception as e:
-        logger.error(f"Error in google_search endpoint: {str(e)}", exc_info=True)
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-@app.route("/health")
-def health():
-    return jsonify({"status": "healthy"}), 200
-
-@app.route("/search_people", methods=['POST'])
-def search_people():
-    try:
-        # Check if API key is configured
-        if not LINKD_API_KEY:
-            logger.error("LINKD_API_KEY not configured")
-            return jsonify({"error": "API key not configured"}), 500
-            
-        data = request.json
-        query = data.get('query')
-        limit = data.get('limit', 10)  # Default to 10 results
-        schools = data.get('schools', [])  # Optional school filter
-        
-        if not query:
-            logger.error("Missing search query")
-            return jsonify({"error": "Search query is required"}), 400
-            
-        # Prepare request to Linkd API
-        url = "https://search.linkd.inc/api/search/users"
-        headers = {
-            "Authorization": f"Bearer {LINKD_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        params = {
-            "query": query,
-            "limit": min(limit, 30)  # API limit is 30
-        }
-        
-        if schools:
-            params["school"] = schools
-            
-        # Make request to Linkd API
-        response = requests.get(url, headers=headers, params=params)
-        
-        if response.status_code != 200:
-            logger.error(f"Linkd API error: {response.text}")
-            return jsonify({
-                "error": "Failed to fetch results from Linkd API",
-                "status_code": response.status_code,
-                "details": response.text
-            }), response.status_code
-            
-        # Return the API response
-        return jsonify(response.json())
-        
-    except Exception as e:
-        logger.error(f"Error in search_people: {str(e)}")
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/get_email', methods=['POST'])
 def get_email():
@@ -381,12 +390,11 @@ def get_email():
             "accept": "application/json",
             "Cache-Control": "no-cache",
             "Content-Type": "application/json",
-            "x-api-key": os.getenv("APOLLO_API_KEY")
+            "x-api-key": APOLLO_API_KEY
         }
 
         response = requests.post(url, headers=headers)
         if response.status_code != 200:
-            logger.error(f"Apollo API error: {response.text}")
             return jsonify({
                 "error": "Failed to fetch email from Apollo API",
                 "status_code": response.status_code,
@@ -400,10 +408,28 @@ def get_email():
             return jsonify({"error": "Email not found"}), 404
         return jsonify({"email": email})
     except Exception as e:
-        logger.error(f"Error in get_email: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    port = int(os.getenv('PORT', 8080))
-    host = os.getenv('HOST', '0.0.0.0')
-    app.run(host=host, port=port)
+
+@app.route('/me', methods=['GET'])
+def me():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'authenticated': False}), 401
+    db = get_firestore_client()
+    doc = db.collection('users').document(user_id).get()
+    data = doc.to_dict() if doc.exists else {}
+    return jsonify({
+        'authenticated': True,
+        'user_id': user_id,
+        'profile_completed': data.get('profile_completed', False),
+        'joined_waitlist': data.get('joined_waitlist', False)
+    })
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'success': True}), 200
+
+if __name__ == "__main__":
+    app.run(host=HOST, port=PORT, debug=DEBUG)
