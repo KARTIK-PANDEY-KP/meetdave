@@ -92,25 +92,46 @@ DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 @app.route('/search', methods=['POST'])
 def search():
     # Ensure user is authenticated
-    # user_id = session.get('user_id')
-    # if not user_id:
-    #     return jsonify({"error": "Not authenticated"}), 401
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Not authenticated"}), 401
     # Check and increment user search count
-    # db = get_firestore_client()
-    # user_ref = db.collection('users').document(user_id)
-    # user_doc = user_ref.get()
-    # current_searches = user_doc.to_dict().get('searches', 0)
-    # if current_searches >= 5:
-    #     return jsonify({"error": "Search limit reached"}), 403
-    # user_ref.update({"searches": firestore.Increment(1)})
+    db = get_firestore_client()
+    user_ref = db.collection('users').document(user_id)
+    user_doc = user_ref.get()
+    current_searches = user_doc.to_dict().get('searches', 0)
+    if current_searches >= 5:
+        return jsonify({"error": "Search limit reached"}), 403
+    user_ref.update({"searches": firestore.Increment(1)})
     try:
         data = request.get_json()
         if not data or 'query' not in data:
             return jsonify({"error": "Missing 'query' in request"}), 400
         query = data['query']
+        
         # Call local generate_google_dorks
-        results = generate_google_dorks(query)
-        return jsonify(results)
+        results_dict = generate_google_dorks(query)
+        
+        # Transform results into the format expected by the frontend
+        transformed_results = []
+        for idx, entry in enumerate(results_dict.values()):
+            for result in entry.get('results', {}).get('data', []):
+                raw_title = result.get('title', 'Unknown')
+                # Extract name before any dash, slash, or pipe
+                for sep in [' - ', ' / ', ' | ']:
+                    if sep in raw_title:
+                        raw_title = raw_title.split(sep, 1)[0]
+                name = raw_title.strip()
+                transformed_results.append({
+                    "id": f"{idx}-{result.get('link', '')[-8:]}",
+                    "name": name,
+                    "profileImage": f"https://ui-avatars.com/api/?name={name.replace(' ', '+')}&background=random",
+                    "linkUrl": result.get('link', '#'),
+                    "linkText": "View Profile"
+                })
+        # Limit to 10 results
+        transformed_results = transformed_results[:10]
+        return jsonify({"results": transformed_results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -147,7 +168,7 @@ def login():
         scopes=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True)
     )
-    auth_url, _ = flow_obj.authorization_url(prompt='auto', include_granted_scopes='true')
+    auth_url, _ = flow_obj.authorization_url(include_granted_scopes='true')
     return redirect(auth_url)
 
 @app.route('/oauth2callback')

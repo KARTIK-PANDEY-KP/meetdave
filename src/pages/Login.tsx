@@ -16,6 +16,9 @@ const Login = () => {
     if (err === 'email_already_registered') {
       setUrlError('This email is already registered. Please log in.');
     }
+    if (params.get('flow') === 'signup') {
+      setUrlError('No account found. Please sign up first!');
+    }
   }, [location.search]);
 
   const handleSignUp = () => {

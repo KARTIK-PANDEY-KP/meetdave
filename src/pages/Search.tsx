@@ -62,7 +62,7 @@ const SearchPage: React.FC = () => {
       setSearchResults(results);
     } catch (error: any) {
       if (error.response && error.response.status === 403) {
-        setSearchLimitError("You've used all 5 free searches. Upgrade to continue searching!");
+        setSearchLimitError("You've used all 5 free searches! Free Dave Search Coming Soon!");
       } else {
         console.error('Search failed', error);
       }
@@ -85,7 +85,8 @@ const SearchPage: React.FC = () => {
             <div className="text-center mb-12">
               <span className="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 text-sm text-blue-600 font-medium mb-4">
                 <Sparkles className="h-4 w-4 mr-2 text-yellow-500" />
-                Your Personal People Finder
+                {/* Your Personal People Finder */}
+                Beta Mode
               </span>
               <div className="flex items-center justify-center mb-6">
                 <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text">
@@ -177,6 +178,8 @@ const SearchPage: React.FC = () => {
                         </h3>
                         <a 
                           href={result.linkUrl} 
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="mt-3 py-2 px-4 border-2 border-transparent rounded-full text-sm font-medium transition-colors"
                           style={{
                             backgroundImage: 'linear-gradient(white, white), linear-gradient(to right, #3B82F6, #8B5CF6, #EC4899)',
